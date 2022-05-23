@@ -1,52 +1,26 @@
 #include <SFML/Graphics.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
+#include <numeric>
 #include <random>
 #include <thread>
-#include <vector>
 #include <unistd.h>
 
-namespace po = boost::program_options;
+//const int size = 50000;//500000
 
-
-float secs = 0.001;
-useconds_t pause = useconds_t(secs * 1e6f);
+unsigned int pause = 0;
 
 bool finished = false;
 
-//TODO: Add new sorting algorithms
-
-void swapRects(sf::RectangleShape& rect1, sf::RectangleShape& rect2)
+void bubbleSort(int *v, int sizeThis)
 {
-    sf::Vector2f temp = rect1.getSize();
-    rect1.setSize(rect2.getSize());
-    rect2.setSize(temp);
-}
-
-void shuffleRects(std::vector<sf::RectangleShape> &rects, int size_this)
-{
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::uniform_int_distribution<int> dist(0, size_this - 1);
-    for (int i = 0; i < size_this; i++)
+    for (int i = 0; i < sizeThis; i++)
     {
-        int j = dist(g);
-        swapRects(rects[i], rects[j]);
-    }
-}
-
-bool running = true;
-
-void bubbleSort(std::vector<sf::RectangleShape> &rects, int size_this)
-{
-    for (int i = 0; i < size_this - 1; i++)
-    {
-        for (int j = 0; j < size_this - i - 1; j++)
+        for (int j = 0; j < sizeThis - i - 1; j++)
         {
-            if(!running)return;
-            if (rects[j].getSize().y > rects[j + 1].getSize().y)
+            if (v[j] > v[j + 1])
             {
-                swapRects(rects[j], rects[j + 1]);
+                std::swap(v[j], v[j + 1]);
                 usleep(pause);
             }
         }
@@ -54,57 +28,198 @@ void bubbleSort(std::vector<sf::RectangleShape> &rects, int size_this)
     finished = true;
 }
 
-void selectionSort(std::vector<sf::RectangleShape> &rects, int size_this){
-    for (int i = 0; i < size_this - 1; i++)
+void insertionSort(int *v, int sizeThis)
+{
+    for (int i = 1; i < sizeThis; i++)
+    {
+        int j = i;
+        while (j > 0 && v[j] < v[j - 1])
+        {
+            std::swap(v[j], v[j - 1]);
+            j--;
+            usleep(pause);
+        }
+    }
+    finished = true;
+}
+
+void selectionSort(int *v, int sizeThis)
+{
+    for (int i = 0; i < sizeThis; i++)
     {
         int min = i;
-        for (int j = i + 1; j < size_this; j++)
+        for (int j = i + 1; j < sizeThis; j++)
         {
-            if(!running)return;
-            if (rects[j].getSize().y < rects[min].getSize().y)min = j;
+            if (v[j] < v[min])
+            {
+                min = j;
+            }
         }
-        swapRects(rects[i], rects[min]);
+        std::swap(v[i], v[min]);
         usleep(pause);
     }
     finished = true;
 }
 
-
-void insertionSort(std::vector<sf::RectangleShape> &rects, int size_this)
+void quickSort(int *v, int sizeThis, int left, int right)
 {
-    for (int i = 1; i < size_this; i++)
+    if (left < right)
     {
-        if(!running)return;
-        sf::Vector2f temp = rects[i].getSize();
-        int j = i - 1;
-        while (j >= 0 && rects[j].getSize().y > temp.y)
+        int pivot = v[(left + right) / 2];
+        int i = left;
+        int j = right;
+        while (i <= j)
         {
-            rects[j + 1].setSize(rects[j].getSize());
-            j--;
+            while (v[i] < pivot)
+            {
+                i++;
+            }
+            while (v[j] > pivot)
+            {
+                j--;
+            }
+            if (i <= j)
+            {
+                std::swap(v[i], v[j]);
+                i++;
+                j--;
+                usleep(pause);
+            }
         }
-        rects[j + 1].setSize(temp);
-        usleep(pause);
+        quickSort(v, sizeThis, left, j);
+        quickSort(v, sizeThis, i, right);
     }
     finished = true;
 }
+
+
+void merge(int *arr, int l, int m, int r)
+{
+    int i, j, k;
+    int n1 = m - l + 1;
+    int n2 = r - m;
+
+    int L[n1], R[n2];
+
+    for (i = 0; i < n1; i++)
+        L[i] = arr[l + i];
+    for (j = 0; j < n2; j++)
+        R[j] = arr[m + 1 + j];
+
+    i = 0;
+    j = 0;
+    k = l;
+    while (i < n1 && j < n2)
+    {
+        if (L[i] <= R[j])
+        {
+            arr[k] = L[i];
+            usleep(pause);
+            i++;
+        }
+        else
+        {
+            arr[k] = R[j];
+            usleep(pause);
+            j++;
+        }
+        k++;
+    }
+
+    while (i < n1)
+    {
+        arr[k] = L[i];
+        usleep(pause);
+        i++;
+        k++;
+    }
+
+    while (j < n2)
+    {
+        arr[k] = R[j];
+        usleep(pause);
+        j++;
+        k++;
+    }
+}
+
+void mergeSort(int *arr, int l, int r)
+{
+    if (l < r)
+    {
+        int m = l + (r - l) / 2;
+
+        mergeSort(arr, l, m);
+        mergeSort(arr, m + 1, r);
+
+        merge(arr, l, m, r);
+    }
+    finished = true;
+}
+
+
+void heapify(int *arr, int n, int i)
+{
+    int largest = i;
+    int l = 2 * i + 1;
+    int r = 2 * i + 2;
+
+    if (l < n && arr[l] > arr[largest])
+        largest = l;
+
+    if (r < n && arr[r] > arr[largest])
+        largest = r;
+
+    if (largest != i)
+    {
+        std::swap(arr[i], arr[largest]);
+        heapify(arr, n, largest);
+        usleep(pause);
+    }
+}
+
+void heapSort(int *arr, int n)
+{
+    for (int i = n / 2 - 1; i >= 0; i--)
+        heapify(arr, n, i);
+
+    for (int i = n - 1; i >= 0; i--)
+    {
+        std::swap(arr[0], arr[i]);
+        heapify(arr, i, 0);
+    }
+    finished = true;
+}
+
 
 int main(int argc, char *argv[]){
+    int size = 10000;
+    int width = 800;
+    int height = 600;
+    sf::Color color = sf::Color::Red;
 
-    int size = 1000;
-    int width = 1800; //1600
-    int height = 800; //800
+    namespace po = boost::program_options;
 
     po::options_description desc("Allowed options");
     desc.add_options()
-        ("help", "produce help message")
-        ("sort,a", po::value<char>(), "sort type \n available: bubble, selection, insertion \n default: bubble")
-        ("size,s", po::value<int>(), "size of array default: 1000 max: 5000")
-        ("width,w", po::value<int>(), "width of window default: 1600")
-        ("height,h", po::value<int>(), "height of window default: 800")
-        ("pause,p", po::value<float>(), "pause in seconds default: 0.005");
+            ("help,h", "produce help message")
+            ("sort,a", po::value<char>(), "sort type \n available: bubble, selection, insertion \n default: bubble")
+            ("size,s", po::value<int>(), "size of array default: 1000 max: 5000")
+            ("width,w", po::value<int>(), "width of window default: 1600")
+            ("height,h", po::value<int>(), "height of window default: 800")
+            ("pause,p", po::value<unsigned int>(), "pause in seconds default: 0.005")
+            ("color,c", po::value<std::string>(), "color of array default: red");
 
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
+
+    try{
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+    }
+    catch(std::exception& e){
+        std::cout << "Error: " << e.what() << std::endl;
+        std::cout << "Use --help for more information" << std::endl;
+        return 1;
+    }
     po::notify(vm);
 
     if (vm.count("help"))
@@ -130,33 +245,49 @@ int main(int argc, char *argv[]){
 
     if (vm.count("pause"))
     {
-        secs = vm["pause"].as<float>();
-        pause = useconds_t(secs * 1e6f);
+        pause = vm["pause"].as<unsigned int>();
+    }
+
+    if (vm.count("color"))
+    {
+        std::string color_str = vm["color"].as<std::string>();
+        if (color_str == "red")
+            color = sf::Color::Red;
+        else if (color_str == "green")
+            color = sf::Color::Green;
+        else if (color_str == "blue")
+            color = sf::Color::Blue;
+        else if (color_str == "yellow")
+            color = sf::Color::Yellow;
+        else if (color_str == "magenta")
+            color = sf::Color::Magenta;
+        else if (color_str == "cyan")
+            color = sf::Color::Cyan;
+        else if (color_str == "white")
+            color = sf::Color::White;
+        else
+        {
+            std::cout << "color not found, using default: red" << std::endl;
+            color = sf::Color::Red;
+        }
     }
 
 
     sf::RenderWindow window(sf::VideoMode(width, height), "Sorting algorithms!", sf::Style::Close);
 
-    std::vector<sf::RectangleShape> rects;
-    for (int i = 0; i < size; i++) {
-        rects.emplace_back(sf::RectangleShape());
-        rects[i].setSize(sf::Vector2f(5, ((float)i + 1) * (float)height / (float)size));
-        rects[i].setPosition(sf::Vector2f((float)i * 5, (float)height));
-        rects[i].rotate(180);
-        rects[i].setFillColor(sf::Color::Red);
-        rects[i].setOutlineColor(sf::Color::Black);
-        rects[i].setOutlineThickness(1);
-    }
+    sf::VertexArray vertices(sf::Lines, 2);
+    vertices[0].color = color;
+    vertices[1].color = color;
 
-    shuffleRects(rects, size);
+    int *data1_X = new int[size];
+    int *data1_Y = new int[size];
 
-    sf::Clock clock;
-    float time{0};
+    std::iota(data1_X, data1_X + size, 0);
+    std::iota(data1_Y, data1_Y + size, 0);
 
-    sf::View view(sf::FloatRect(0, 0, (float)size * 5, (float)height));
+    std::shuffle(data1_Y, data1_Y + size, std::mt19937{std::random_device{}()});
 
-    view.move(-5, 0);
-    view.zoom(1.005);
+    sf::View view(sf::FloatRect(0, 0, float(2 * size), float(2 * size)));
 
     window.setView(view);
 
@@ -164,30 +295,40 @@ int main(int argc, char *argv[]){
 
     std::thread sorting;
 
-
     if(vm.count("sort")){
         if(vm["sort"].as<char>() == 'b'){
-            sorting = std::thread(bubbleSort, std::ref(rects), size);
+            sorting = std::thread(bubbleSort, data1_Y, size);
             title = "Bubble sort";
         }
         else if(vm["sort"].as<char>() == 's'){
-            sorting = std::thread(selectionSort, std::ref(rects), size);
+            sorting = std::thread(selectionSort, data1_Y, size);
             title = "Selection sort";
         }
         else if(vm["sort"].as<char>() == 'i'){
-            sorting = std::thread(insertionSort, std::ref(rects), size);
+            sorting = std::thread(insertionSort, data1_Y, size);
             title = "Insertion sort";
         }
+        else if(vm["sort"].as<char>() == 'm'){
+            sorting = std::thread(mergeSort, data1_Y, 0, size - 1);
+            title = "Merge sort";
+        }
+        else if(vm["sort"].as<char>() == 'h'){
+            sorting = std::thread(heapSort, data1_Y, size);
+            title = "Heap sort";
+        }
         else{
-            std::cout << "Wrong sort type!\n";
+            std::cout << "Wrong sorting algorithm name!\n";
             return 1;
         }
     }
     else{
-        sorting = std::thread(bubbleSort, std::ref(rects), size);
-        title = "Bubble sort";
+        std::cout << "Please specify sorting algorithm!\n"
+                     "Available: bubble, selection, insertion, merge, heap\n";
+        return 1;
     }
 
+    sf::Clock clock;
+    float time{0};
 
     while (window.isOpen()) {
         sf::Event event{};
@@ -201,8 +342,10 @@ int main(int argc, char *argv[]){
         }
         window.clear();
 
-        for (int i = 0; i < size; i++) {
-            window.draw(rects[i]);
+        for(int i = 0; i < size; i++){
+            vertices[0].position = sf::Vector2f(float(data1_X[i] * 2), float(2 * size));
+            vertices[1].position = sf::Vector2f(float(data1_X[i] * 2), float(2 * size - 2 * data1_Y[i]));
+            window.draw(vertices);
         }
         if(!finished) {
             time = clock.getElapsedTime().asSeconds();
@@ -210,7 +353,6 @@ int main(int argc, char *argv[]){
         window.setTitle(title + " : " + std::to_string(time));
         window.display();
     }
-    running = false;
     sorting.join();
     return 0;
 }
