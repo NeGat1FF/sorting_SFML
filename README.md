@@ -6,3 +6,6 @@ Choose algrithm with -a option
 1. Bubble sort
 2. Insertion sort
 3. Selection sort
+4. Quick sort
+5. Heap sort
+6. Merge sort
